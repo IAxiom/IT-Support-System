@@ -1,17 +1,18 @@
-
-from state import AgentState
+from state import AgentState, AuditLogger
 from tools.mcp_tools import get_user_context
 import random
+from datetime import datetime
 
 class EscalationAgent:
     def __init__(self):
         # Workaround database keyed by keywords
         self.workarounds = {
-            "vpn": "While waiting, you can try: 1) Restart your VPN client, 2) Connect to a different region, 3) Use mobile hotspot temporarily.",
-            "email": "While waiting, you can: 1) Access webmail at mail.company.com, 2) Check spam folder, 3) Clear Outlook cache.",
-            "password": "While waiting, try: 1) Use 'Forgot Password' on the login page, 2) Check if Caps Lock is on.",
-            "slow": "While waiting, try: 1) Close unused browser tabs, 2) Restart your computer, 3) Run disk cleanup.",
-            "crash": "While waiting, try: 1) Save your work frequently, 2) Check for software updates, 3) Increase RAM allocation if possible."
+            "vpn": "While waiting, try: 1) Restart VPN client, 2) Connect to different region, 3) Use mobile hotspot.",
+            "email": "While waiting: 1) Access webmail at mail.company.com, 2) Check spam folder, 3) Clear Outlook cache.",
+            "password": "While waiting: 1) Use 'Forgot Password' on login page, 2) Check if Caps Lock is on.",
+            "slow": "While waiting: 1) Close unused browser tabs, 2) Restart computer, 3) Run disk cleanup.",
+            "crash": "While waiting: 1) Save work frequently, 2) Check for software updates.",
+            "printer": "While waiting: 1) Try different printer, 2) Restart print spooler, 3) Clear print queue."
         }
         
         # Resolution time estimates (in minutes)
@@ -26,6 +27,7 @@ class EscalationAgent:
         print("--- Escalation Agent (Empathy Engine) ---")
         messages = state['messages']
         last_message = messages[-1]['content'].lower()
+        original_message = messages[-1]['content']
         user_id = state.get("user_id", "unknown_user")
         sentiment = state.get("sentiment", "Neutral")
         
@@ -73,17 +75,44 @@ class EscalationAgent:
             f"**⚡ Priority:** {priority}",
             f"**🕐 Estimated Response:** {est_time} minutes",
             f"**👔 Service Level:** {tone}",
-            f"**📝 Summary:** \"{messages[-1]['content'][:80]}{'...' if len(messages[-1]['content']) > 80 else ''}\"",
+            f"**📝 Summary:** \"{original_message[:80]}{'...' if len(original_message) > 80 else ''}\"",
         ]
         
         if workaround:
             response_parts.append(f"\n**💡 While You Wait:**\n{workaround}")
         
-        response_parts.append(f"\n---\n📲 *Notification sent to #it-support-urgent on Slack*\nA human agent will reach out within {est_time} minutes.")
+        # Slack notification simulation
+        slack_channel = "#it-support-urgent" if priority in ["High", "Critical (VIP)"] else "#it-support-general"
+        response_parts.append(f"\n---")
+        response_parts.append(f"📲 **Slack Notification Sent:**")
+        response_parts.append(f"```")
+        response_parts.append(f"Channel: {slack_channel}")
+        response_parts.append(f"@it-oncall New ticket #{ticket_id}")
+        response_parts.append(f"Priority: {priority}")
+        response_parts.append(f"User: {user_id} ({context['department']})")
+        response_parts.append(f"Issue: {original_message[:50]}...")
+        response_parts.append(f"```")
+        
+        response_parts.append(f"\nA human agent will reach out within {est_time} minutes.")
+        
+        # Add confidence
+        confidence = 0.95  # Escalation is always high confidence
+        response_parts.append(f"\n🟢 *Confidence: {confidence:.0%}*")
 
         response = "\n".join(response_parts)
         
+        # Log the escalation
+        audit_log = AuditLogger.log(state, "EscalationAgent", "ticket_created", {
+            "ticket_id": ticket_id,
+            "priority": priority,
+            "tone": tone,
+            "vip": context['vip'],
+            "slack_channel": slack_channel
+        })
+        
         return {
             "messages": [{"role": "assistant", "content": response}],
-            "next_agent": "END"
+            "next_agent": "END",
+            "confidence": confidence,
+            "audit_log": audit_log
         }
