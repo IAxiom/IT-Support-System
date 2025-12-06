@@ -289,12 +289,13 @@ with tab_chat:
     
     # Accept user input
     if prompt := st.chat_input("How can I help you?"):
-        st.chat_message("user").markdown(prompt)
         st.session_state.messages.append({"role": "user", "content": prompt})
+        st.session_state.needs_response = True
         st.rerun()
     
-    # Process AI response
-    if st.session_state.messages and st.session_state.messages[-1]["role"] == "user":
+    # Process AI response only if pending
+    if st.session_state.get("needs_response", False):
+        st.session_state.needs_response = False
         with st.chat_message("assistant"):
             message_placeholder = st.empty()
             status_placeholder = st.empty()
@@ -385,4 +386,3 @@ with tab_chat:
                     st.toast("We'll improve! 👎")
             
             st.session_state.messages.append({"role": "assistant", "content": response})
-            st.rerun()

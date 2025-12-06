@@ -33,14 +33,17 @@ def analyze_request(message: str) -> dict:
     message_lower = message.lower()
     
     # Keyword-based intent detection
-    if any(word in message_lower for word in ["angry", "furious", "frustrated", "hate", "worst"]):
+    if any(word in message_lower for word in ["angry", "furious", "frustrated", "hate", "worst", "help me now"]):
         fallback_intent = "EscalationAgent"
         fallback_sentiment = "Frustrated"
-    elif any(word in message_lower for word in ["log", "error", "security", "suspicious", "hack", "breach"]):
+    elif any(word in message_lower for word in ["log", "error", "security", "suspicious", "hack", "breach", "attack"]):
         fallback_intent = "LogAnalysisAgent"
         fallback_sentiment = "Neutral"
-    elif any(word in message_lower for word in ["reset", "unlock", "password", "mfa", "vpn", "reboot", "order", "install"]):
+    elif any(word in message_lower for word in ["reset", "unlock", "mfa", "vpn status", "reboot", "order", "install", "provision"]):
         fallback_intent = "WorkflowAgent"
+        fallback_sentiment = "Neutral"
+    elif any(word in message_lower for word in ["policy", "password", "what is", "how do", "where", "when", "wifi", "network", "expense", "benefit"]):
+        fallback_intent = "KnowledgeAgent"
         fallback_sentiment = "Neutral"
     else:
         fallback_intent = "KnowledgeAgent"
