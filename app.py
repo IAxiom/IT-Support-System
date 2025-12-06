@@ -8,7 +8,23 @@ from collections import Counter
 if "GOOGLE_API_KEY" in st.secrets:
     os.environ["GOOGLE_API_KEY"] = st.secrets["GOOGLE_API_KEY"]
 
+# Load Jira credentials
+if "JIRA_DOMAIN" in st.secrets:
+    os.environ["JIRA_DOMAIN"] = st.secrets["JIRA_DOMAIN"]
+if "JIRA_EMAIL" in st.secrets:
+    os.environ["JIRA_EMAIL"] = st.secrets["JIRA_EMAIL"]
+if "JIRA_API_TOKEN" in st.secrets:
+    os.environ["JIRA_API_TOKEN"] = st.secrets["JIRA_API_TOKEN"]
+
 from main import app as graph_app
+
+# Import Jira client for status display
+try:
+    from integrations.jira_client import get_jira_client, is_demo_mode, reset_jira_client
+    JIRA_AVAILABLE = True
+except ImportError:
+    JIRA_AVAILABLE = False
+
 
 st.set_page_config(
     page_title="IT Support Genius", 

@@ -1,7 +1,17 @@
 from state import AgentState, AuditLogger
 from tools.mcp_tools import get_user_context
-import random
 from datetime import datetime
+
+# Import Jira integration
+try:
+    from integrations.jira_client import jira_create_ticket, is_demo_mode
+    JIRA_AVAILABLE = True
+except ImportError:
+    JIRA_AVAILABLE = False
+    def jira_create_ticket(*args, **kwargs):
+        return "❌ Jira integration not available"
+    def is_demo_mode():
+        return True
 
 class EscalationAgent:
     def __init__(self):
@@ -34,9 +44,6 @@ class EscalationAgent:
         # Fetch Context
         context = get_user_context(user_id)
         
-        # Generate Ticket ID
-        ticket_id = f"INC-{random.randint(10000, 99999)}"
-        
         # Determine Priority
         priority = "Medium"
         if "urgent" in last_message or "critical" in last_message:
@@ -68,14 +75,34 @@ class EscalationAgent:
             tone = "White Glove"
             intro = f"Welcome, {context['role']}. Your request is being prioritized immediately by our senior team."
 
+        # Create REAL Jira Ticket
+        jira_result = jira_create_ticket(
+            summary=f"[IT Support] {original_message[:50]}{'...' if len(original_message) > 50 else ''}",
+            description=f"""
+**User:** {user_id}
+**Department:** {context['department']}
+**VIP:** {'Yes' if context['vip'] else 'No'}
+**Sentiment:** {sentiment}
+
+**User Request:**
+{original_message}
+
+---
+*Ticket created by IT Support Genius AI*
+            """.strip(),
+            priority=priority
+        )
+        
+        demo_tag = " (Demo Mode)" if is_demo_mode() else ""
+
         # Build response
         response_parts = [
             f"{intro} I have escalated this to our Tier 2 Human Support team.\n",
-            f"**🎫 Ticket Created:** #{ticket_id}",
+            f"**🎫 Jira Ticket Created{demo_tag}:**",
+            f"{jira_result}",
             f"**⚡ Priority:** {priority}",
             f"**🕐 Estimated Response:** {est_time} minutes",
             f"**👔 Service Level:** {tone}",
-            f"**📝 Summary:** \"{original_message[:80]}{'...' if len(original_message) > 80 else ''}\"",
         ]
         
         if workaround:
@@ -87,27 +114,26 @@ class EscalationAgent:
         response_parts.append(f"📲 **Slack Notification Sent:**")
         response_parts.append(f"```")
         response_parts.append(f"Channel: {slack_channel}")
-        response_parts.append(f"@it-oncall New ticket #{ticket_id}")
+        response_parts.append(f"@it-oncall {jira_result[:50]}")
         response_parts.append(f"Priority: {priority}")
         response_parts.append(f"User: {user_id} ({context['department']})")
-        response_parts.append(f"Issue: {original_message[:50]}...")
         response_parts.append(f"```")
         
         response_parts.append(f"\nA human agent will reach out within {est_time} minutes.")
         
-        # Add confidence
-        confidence = 0.95  # Escalation is always high confidence
+        # Confidence
+        confidence = 0.95
         response_parts.append(f"\n🟢 *Confidence: {confidence:.0%}*")
 
         response = "\n".join(response_parts)
         
         # Log the escalation
-        audit_log = AuditLogger.log(state, "EscalationAgent", "ticket_created", {
-            "ticket_id": ticket_id,
+        audit_log = AuditLogger.log(state, "EscalationAgent", "jira_ticket_created", {
+            "jira_result": jira_result,
             "priority": priority,
             "tone": tone,
             "vip": context['vip'],
-            "slack_channel": slack_channel
+            "demo_mode": is_demo_mode()
         })
         
         return {
