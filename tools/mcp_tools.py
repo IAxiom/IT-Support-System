@@ -1,3 +1,5 @@
+import random
+
 def check_vpn_status(user_id: str) -> str:
     """
     Simulates checking the VPN status for a user.

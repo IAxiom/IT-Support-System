@@ -1,9 +1,12 @@
+from typing import TypedDict, List, Any, Optional
 
-from typing import TypedDict, Annotated, List, Union
-import operator
-
-class AgentState(TypedDict):
-    messages: Annotated[List[dict], operator.add]
-    next_agent: str
-    current_context: dict
+class AgentState(TypedDict, total=False):
+    messages: List[dict]
     user_id: str
+    next_agent: str
+    routing_path: List[str]  # Track agent traversal for visualization
+    entities: dict           # Extracted entities from intake
+    sentiment: str           # User sentiment (Positive/Neutral/Negative/Frustrated)
+    urgency: str             # Issue urgency (Low/Medium/High/Critical)
+
+    current_context: dict

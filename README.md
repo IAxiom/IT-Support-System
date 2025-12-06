@@ -1,69 +1,151 @@
 # 🤖 Multi-Agent IT Support System
 
-A next-generation IT Support Simulator powered by **LangGraph**, **Gemini 2.5**, and **Streamlit**. This system demonstrates an autonomous agentic workflow capable of handling complex IT scenarios, from password resets to ransomware detection.
+> **Enterprise-Grade AI Support** powered by LangGraph, Gemini 2.5, and MCP
 
-![App Screenshot](https://raw.githubusercontent.com/IAxiom/IT-Support-System/main/webapp_screenshot.png)
-*(Note: You'll need to upload a screenshot to your repo or replace this link)*
-
-## 🌟 Features
-
-### 🧠 Intelligent Agents
--   **Intake Agent**: Uses Sentiment Analysis & Entity Extraction to route requests. Auto-escalates frustrated users.
--   **Workflow Agent**: LLM-driven tool selection to handle dynamic requests (e.g., "I need a mouse" -> `order_peripheral`).
--   **Knowledge Agent**: RAG pipeline (Retrieval Augmented Generation) for policy and "how-to" questions.
--   **Escalation Agent**: "Empathy Engine" that adapts tone based on user sentiment (Apologetic vs. Professional).
--   **Log Analysis Agent**: Detects security threats like Phishing and Ransomware patterns.
-
-### 🚀 Capabilities (The "20 Tasks")
-The system supports 20+ real-world IT scenarios, including:
--   **Identity**: MFA Reset, Onboarding, Offboarding, Temp Admin Access.
--   **Hardware**: Laptop Refresh checks, Peripheral Ordering.
--   **Network**: Server Reboots (Prod/Dev aware), Wi-Fi troubleshooting.
--   **Security**: Phishing Analysis, Data Exfiltration detection.
-
-## 🛠️ Tech Stack
--   **Orchestration**: [LangGraph](https://langchain-ai.github.io/langgraph/)
--   **LLM & Embeddings**: Google Gemini 2.5 Flash Lite
--   **Vector DB**: ChromaDB (Local)
--   **UI**: Streamlit
--   **Language**: Python 3.10+
-
-## 📦 Installation
-
-1.  **Clone the repository**:
-    ```bash
-    git clone https://github.com/IAxiom/IT-Support-System.git
-    cd IT-Support-System
-    ```
-
-2.  **Install dependencies**:
-    ```bash
-    pip install -r requirements.txt
-    ```
-
-3.  **Set up Environment**:
-    You need a Google Gemini API Key.
-    ```bash
-    export GOOGLE_API_KEY="your_api_key_here"
-    ```
-
-4.  **Run the App**:
-    ```bash
-    streamlit run app.py
-    ```
-
-## 🧪 Testing
-The system includes a **Dev Button** in the sidebar to simulate 20+ scenarios instantly.
-You can also run the verification suite:
-```bash
-python main.py
-```
-
-## ☁️ Deployment
-Hosted on **Streamlit Community Cloud**.
-1.  Fork this repo.
-2.  Go to [share.streamlit.io](https://share.streamlit.io).
-3.  Deploy the app and add your `GOOGLE_API_KEY` in the Secrets management.
+A sophisticated multi-agent AI system demonstrating real-world IT support automation with sentiment-aware routing, RAG-powered knowledge retrieval, and standardized tool integration via Model Context Protocol (MCP).
 
 ---
+
+## 🎯 Key Differentiators
+
+| Feature | Our System | Traditional Chatbots |
+|---------|------------|---------------------|
+| **Architecture** | Multi-agent (5 specialized) | Monolithic |
+| **Routing** | LLM + Sentiment + VIP aware | Rule-based |
+| **Tools** | MCP standardized | Custom APIs |
+| **Knowledge** | RAG + Hallucination check | Static FAQs |
+| **Escalation** | Empathy Engine | Generic handoff |
+
+---
+
+## 🧠 Agent Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      USER REQUEST                           │
+└────────────────────────┬────────────────────────────────────┘
+                         ▼
+┌─────────────────────────────────────────────────────────────┐
+│              🎯 INTAKE AGENT                                │
+│   Sentiment Analysis | Intent Classification | VIP Check   │
+└────────────────────────┬────────────────────────────────────┘
+          ┌──────────────┼──────────────┬───────────────┐
+          ▼              ▼              ▼               ▼
+    ┌───────────┐  ┌───────────┐  ┌───────────┐  ┌───────────┐
+    │📚 KNOWLEDGE│  │⚙️ WORKFLOW │  │🚨 ESCALATION│  │🔍 SECURITY │
+    │   (RAG)   │  │  (Tools)  │  │ (Empathy) │  │  (Logs)   │
+    └───────────┘  └───────────┘  └───────────┘  └───────────┘
+```
+
+### 5 Specialized Agents
+
+| Agent | Responsibility | Key Features |
+|-------|---------------|--------------|
+| **Intake** | First contact, routing | Sentiment analysis, entity extraction, VIP auto-escalation |
+| **Knowledge** | Policy/info questions | RAG with ChromaDB, hallucination detection |
+| **Workflow** | Automated actions | 11 MCP tools, LLM-driven selection |
+| **Escalation** | Human handoff | Empathy engine, workarounds, resolution time estimates |
+| **Log Analysis** | Security threats | Ransomware, phishing, data exfiltration detection |
+
+---
+
+## 🔌 MCP Integration
+
+This project showcases **Model Context Protocol** for standardized tool access:
+
+```bash
+# Run MCP demo
+python mcp_server.py      # Shows 6 IT tools with discovery
+python mcp_client_demo.py # Compares MCP vs traditional APIs
+```
+
+**Why MCP?**
+- ✅ Standardized discovery across all systems
+- ✅ Uniform interface (same `call_tool()` for everything)
+- ✅ Works with VS Code, Claude Desktop, custom apps
+- ✅ Enterprise-ready governance
+
+---
+
+## 📊 Live Metrics Dashboard
+
+The Streamlit UI includes real-time metrics:
+- **Automation Rate**: % resolved without human
+- **Response Time**: Average LLM latency
+- **Agent Distribution**: Which agents handle traffic
+- **Satisfaction**: User feedback (👍/👎)
+
+---
+
+## 🛠️ Tech Stack
+
+| Layer | Technology |
+|-------|------------|
+| Orchestration | LangGraph |
+| LLM | Gemini 2.5 Flash Lite |
+| Vector DB | ChromaDB |
+| UI | Streamlit |
+| Protocol | MCP (Model Context Protocol) |
+
+---
+
+## 🚀 Quick Start
+
+```bash
+# 1. Clone & Install
+git clone https://github.com/IAxiom/IT-Support-System.git
+cd IT-Support-System
+pip install -r requirements.txt
+
+# 2. Set API Key
+export GOOGLE_API_KEY="your_key"
+
+# 3. Initialize Knowledge Base
+python setup_rag.py
+
+# 4. Run App
+streamlit run app.py
+```
+
+---
+
+## 🧪 Testing
+
+**Debug Mode**: Toggle in sidebar to see agent routing, sentiment, and entities.
+
+**Scenario Categories**:
+- Identity & Access (MFA, onboarding, sudo)
+- Hardware (laptop refresh, peripherals)
+- Network (VPN, server reboot)
+- Security (phishing, log analysis)
+- Knowledge (policies, HR info)
+- Escalation (frustrated users, VIPs)
+
+**CLI Testing**:
+```bash
+python main.py           # Full test suite
+python mcp_server.py     # MCP demo
+python mcp_client_demo.py # MCP integration demo
+```
+
+---
+
+## 📚 Documentation
+
+- [Product Spec](./docs/PRODUCT_SPEC.md) - Personas, metrics, architecture
+- [Competitive Analysis](./docs/COMPETITIVE_ANALYSIS.md) - vs Glean, ServiceNow, Moveworks
+
+---
+
+## 🎓 Learning Outcomes
+
+This project demonstrates:
+- ✅ Multi-agent orchestration with LangGraph
+- ✅ RAG implementation with hallucination prevention
+- ✅ MCP integration for standardized tool access
+- ✅ Workflow automation (11 IT tasks)
+- ✅ Product ownership (metrics, personas, positioning)
+
+---
+
 *Built with ❤️ by the Antigravity Team*

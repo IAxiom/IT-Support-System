@@ -14,21 +14,41 @@ workflow_agent = WorkflowAgent()
 escalation_agent = EscalationAgent()
 log_analysis_agent = LogAnalysisAgent()
 
-# Define Nodes
+# Define Nodes with Routing Path Tracking
 def intake_node(state: AgentState):
-    return intake_agent.run(state)
+    result = intake_agent.run(state)
+    path = state.get("routing_path", [])
+    path.append("Intake")
+    result["routing_path"] = path
+    return result
 
 def knowledge_node(state: AgentState):
-    return knowledge_agent.run(state)
+    result = knowledge_agent.run(state)
+    path = state.get("routing_path", [])
+    path.append("Knowledge")
+    result["routing_path"] = path
+    return result
 
 def workflow_node(state: AgentState):
-    return workflow_agent.run(state)
+    result = workflow_agent.run(state)
+    path = state.get("routing_path", [])
+    path.append("Workflow")
+    result["routing_path"] = path
+    return result
 
 def escalation_node(state: AgentState):
-    return escalation_agent.run(state)
+    result = escalation_agent.run(state)
+    path = state.get("routing_path", [])
+    path.append("Escalation")
+    result["routing_path"] = path
+    return result
 
 def log_analysis_node(state: AgentState):
-    return log_analysis_agent.run(state)
+    result = log_analysis_agent.run(state)
+    path = state.get("routing_path", [])
+    path.append("LogAnalysis")
+    result["routing_path"] = path
+    return result
 
 # Define Routing Logic
 def route_intake(state: AgentState):

@@ -37,22 +37,4 @@ class IntakeAgent:
             print(">> Auto-Escalating due to Sentiment/Urgency <<")
             intent = "EscalationAgent"
             
-        return {"next_agent": intent}
-        
-        intent = analysis.get("intent", "KnowledgeAgent")
-        sentiment = analysis.get("sentiment", "Neutral")
-        urgency = analysis.get("urgency", "Medium")
-        entities = analysis.get("entities", {})
-        
-        print(f"Analysis: Intent={intent} | Sentiment={sentiment} | Urgency={urgency}")
-        print(f"Entities: {entities}")
-        
-        # Logic: Auto-escalate if Frustrated or Critical
-        if sentiment == "Frustrated" or urgency == "Critical":
-            print(">> Auto-Escalating due to Sentiment/Urgency <<")
-            intent = "EscalationAgent"
-            
-        # Update state (in a real app, we'd merge entities into state)
-        # state['entities'] = entities 
-        
-        return {"next_agent": intent}
+        return {"next_agent": intent, "entities": entities, "sentiment": sentiment, "urgency": urgency}
