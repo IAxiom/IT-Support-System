@@ -186,12 +186,14 @@ with tab_chat:
         
         if st.button("▶️ Run Scenario", use_container_width=True):
             st.session_state.messages.append({"role": "user", "content": scenario_choice})
+            st.session_state.needs_response = True
             st.rerun()
         
         if st.button("🎲 Random", use_container_width=True):
             import random
             all_scenarios = [s for cat in scenarios.values() for s in cat]
             st.session_state.messages.append({"role": "user", "content": random.choice(all_scenarios)})
+            st.session_state.needs_response = True
             st.rerun()
         
         col1, col2 = st.columns(2)
