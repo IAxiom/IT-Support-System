@@ -9,46 +9,38 @@ import json
 
 class WorkflowAgent:
     def __init__(self):
-        # Define the Registry of Capabilities (The 20 Tasks)
         self.TOOL_REGISTRY = {
-            "check_vpn_status": {"func": check_vpn_status, "desc": "Check VPN connection status. Args: user_id", "sensitive": False},
-            "unlock_account": {"func": unlock_account, "desc": "Unlock a user account. Args: user_id", "sensitive": False},
-            "provision_license": {"func": provision_license, "desc": "Provision software license. Args: user_id, software_name", "sensitive": False},
-            "reset_mfa": {"func": reset_mfa, "desc": "Reset Multi-Factor Authentication (MFA/2FA). Args: user_id", "sensitive": False},
-            "onboard_user": {"func": onboard_user, "desc": "Onboard a new employee. Args: name, department", "sensitive": False},
-            "offboard_user": {"func": offboard_user, "desc": "Offboard/Disable a user. Args: user_id", "sensitive": True},
-            "grant_temp_admin": {"func": grant_temp_admin, "desc": "Grant temporary admin/sudo access. Args: user_id, duration_hours", "sensitive": True},
-            "check_hardware_eligibility": {"func": check_hardware_eligibility, "desc": "Check if user is eligible for laptop refresh. Args: user_id", "sensitive": False},
-            "order_peripheral": {"func": order_peripheral, "desc": "Order hardware peripherals (monitor, mouse, keyboard). Args: user_id, item", "sensitive": False},
-            "reboot_server": {"func": reboot_server, "desc": "Reboot a server. Args: server_id", "sensitive": True},
-            "submit_facility_request": {"func": submit_facility_request, "desc": "Report facility issues (meeting rooms, printers). Args: location, issue", "sensitive": False}
+            "check_vpn_status": {"func": check_vpn_status, "desc": "Check VPN connection status", "sensitive": False},
+            "unlock_account": {"func": unlock_account, "desc": "Unlock a user account", "sensitive": False},
+            "provision_license": {"func": provision_license, "desc": "Provision software license", "sensitive": False},
+            "reset_mfa": {"func": reset_mfa, "desc": "Reset MFA/2FA", "sensitive": False},
+            "onboard_user": {"func": onboard_user, "desc": "Onboard new employee", "sensitive": False},
+            "offboard_user": {"func": offboard_user, "desc": "Offboard/disable user", "sensitive": True},
+            "grant_temp_admin": {"func": grant_temp_admin, "desc": "Grant temporary admin access", "sensitive": True},
+            "check_hardware_eligibility": {"func": check_hardware_eligibility, "desc": "Check laptop refresh eligibility", "sensitive": False},
+            "order_peripheral": {"func": order_peripheral, "desc": "Order hardware (mouse, keyboard, monitor)", "sensitive": False},
+            "reboot_server": {"func": reboot_server, "desc": "Reboot a server", "sensitive": True},
+            "submit_facility_request": {"func": submit_facility_request, "desc": "Report facility issues", "sensitive": False}
         }
 
     def run(self, state: AgentState):
-        print("--- Workflow Agent (Creative/Dynamic) ---")
+        print("--- Workflow Agent ---")
         user_id = state.get("user_id", "unknown_user")
         messages = state['messages']
         last_message = messages[-1]['content']
         
-        # Check for conversation context
-        conversation_summary = state.get("conversation_summary", "")
-        context_aware_message = last_message
-        if conversation_summary:
-            context_aware_message = f"Previous context: {conversation_summary}\n\nCurrent request: {last_message}"
-        
-        # 1. Construct Tool Descriptions for the LLM
+        # Tool descriptions for LLM
         tools_desc = "\n".join([f"- {name}: {meta['desc']}" for name, meta in self.TOOL_REGISTRY.items()])
         
-        # 2. Ask LLM to Select a Tool
-        selection = select_tool(context_aware_message, tools_desc)
-        tool_name = selection.get("tool_name")
+        # Select tool
+        selection = select_tool(last_message, tools_desc)
+        tool_name = selection.get("tool_name", "None")
         args = selection.get("arguments", {})
         reasoning = selection.get("reasoning", "")
         
-        print(f"LLM Selection: {tool_name} | Reason: {reasoning}")
+        print(f"Selected: {tool_name} | Reason: {reasoning}")
         
-        response_steps = []
-        confidence = 0.85  # Workflow actions are high confidence when tool matches
+        confidence = 0.85
         requires_human_approval = False
         
         if tool_name in self.TOOL_REGISTRY:
@@ -56,73 +48,69 @@ class WorkflowAgent:
             func = tool["func"]
             is_sensitive = tool.get("sensitive", False)
             
-            # Inject user_id if missing and required
-            if "user_id" not in args and "user_id" in tool["desc"]:
+            if "user_id" not in args:
                 args["user_id"] = user_id
             
-            # Check if this action requires human approval
             if is_sensitive or requires_approval(tool_name, args):
                 requires_human_approval = True
-                response_steps.append(f"⚠️ **Approval Required**")
-                response_steps.append(f"The action `{tool_name}` requires human approval.")
-                response_steps.append(f"**Parameters:** {json.dumps(args, indent=2)}")
-                response_steps.append(f"**Reason:** {reasoning}")
-                response_steps.append("")
-                response_steps.append("🔔 *A notification has been sent to IT Security for approval.*")
-                response_steps.append("*You will be notified once approved.*")
-                confidence = 0.95  # High confidence in the routing decision
+                response = f"""⚠️ **Approval Required**
+
+The action `{tool_name}` requires human approval before execution.
+
+| Parameter | Value |
+|-----------|-------|
+| **Action** | {tool_name} |
+| **User** | {user_id} |
+| **Reason** | {reasoning} |
+
+🔔 *A notification has been sent to IT Security for approval.*
+
+You will be notified once approved.
+
+🟢 *Confidence: 95%*"""
+                confidence = 0.95
                 
-                # Log the pending approval
                 audit_log = AuditLogger.log(state, "WorkflowAgent", "approval_requested", {
-                    "tool": tool_name,
-                    "args": args,
-                    "reason": reasoning
+                    "tool": tool_name, "args": args
                 })
             else:
                 try:
-                    # 3. Execute the Tool
-                    response_steps.append(f"🔧 Executing: `{tool_name}`...")
                     result = func(**args)
-                    response_steps.append(f"✅ **Result**: {result}")
+                    response = f"""🔧 **Executing:** `{tool_name}`
+
+✅ **Result:** {result}"""
                     
-                    # Special handling for VPN locked accounts (Chained Workflow)
+                    # VPN locked account auto-remediation
                     if tool_name == "check_vpn_status" and result == "Account Locked":
-                        response_steps.append("")
-                        response_steps.append("🔄 Detected locked account. Auto-remediating...")
                         unlock_res = unlock_account(user_id)
-                        response_steps.append(f"✅ Follow-up: {unlock_res}")
+                        response += f"\n\n🔄 Detected locked account. Auto-remediating...\n✅ **Follow-up:** {unlock_res}"
                     
-                    # Log successful execution
+                    response += f"\n\n🟢 *Confidence: {confidence:.0%}*"
+                    
                     audit_log = AuditLogger.log(state, "WorkflowAgent", "tool_executed", {
-                        "tool": tool_name,
-                        "args": args,
-                        "result": str(result)[:200]
+                        "tool": tool_name, "result": str(result)[:100]
                     })
                         
                 except Exception as e:
-                    response_steps.append(f"❌ Error executing tool: {e}")
+                    response = f"❌ **Error:** {e}\n\n🔴 *Confidence: 30%*"
                     confidence = 0.3
-                    audit_log = AuditLogger.log(state, "WorkflowAgent", "tool_error", {
-                        "tool": tool_name,
-                        "error": str(e)
-                    })
+                    audit_log = AuditLogger.log(state, "WorkflowAgent", "tool_error", {"error": str(e)})
         else:
-            response_steps.append("🤔 I couldn't match your request to a specific workflow tool.")
-            response_steps.append("I've noted this for the engineering team.")
+            response = f"""I couldn't match your request to a specific tool. 
+
+Let me help you manually or connect you with IT support.
+
+📞 **IT Support:** (555) 123-4567
+
+🟡 *Confidence: 40%*"""
             confidence = 0.4
-            audit_log = AuditLogger.log(state, "WorkflowAgent", "no_tool_match", {
-                "query": last_message[:100]
-            })
-        
-        # Add confidence indicator
-        confidence_emoji = "🟢" if confidence > 0.7 else "🟡" if confidence > 0.4 else "🔴"
-        response_steps.append(f"\n{confidence_emoji} *Confidence: {confidence:.0%}*")
+            audit_log = AuditLogger.log(state, "WorkflowAgent", "no_match", {"query": last_message[:50]})
 
         return {
-            "messages": [{"role": "assistant", "content": "\n".join(response_steps)}],
+            "messages": [{"role": "assistant", "content": response}],
             "next_agent": "END",
             "confidence": confidence,
             "requires_approval": requires_human_approval,
             "approval_action": tool_name if requires_human_approval else None,
-            "audit_log": audit_log if 'audit_log' in dir() else state.get("audit_log", [])
+            "audit_log": audit_log
         }

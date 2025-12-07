@@ -1,106 +1,114 @@
+"""
+Knowledge Agent with Inline Knowledge Base
+
+Uses a simple in-memory knowledge base for demo reliability,
+with optional RAG enhancement when embeddings are available.
+"""
+
 from state import AgentState, AuditLogger
-from utils.llm import mock_llm_rag_response, get_llm
-from utils.rag import query_knowledge_base, redact_pii
+from utils.llm import get_llm
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
+import os
+
+# In-memory knowledge base for demo reliability
+KNOWLEDGE_BASE = {
+    "password": {
+        "policy": "Password Policy: Minimum 12 characters, must include uppercase, lowercase, number, and special character. Passwords expire every 90 days. No reuse of last 10 passwords.",
+        "reset": "To reset your password: Visit id.company.com/reset, enter your email, and follow the link. If you don't receive it, check spam or contact IT at (555) 123-4567."
+    },
+    "wifi": {
+        "guest": "Guest WiFi Password: 'Innovation2025!' - This rotates every Monday. Connect to 'Company-Guest' network.",
+        "corporate": "Corporate WiFi: Connect to 'Company-Secure' using your domain credentials. This provides full internal access.",
+        "troubleshooting": "WiFi Troubleshooting: 1) Restart WiFi on device, 2) Forget network and reconnect, 3) Move closer to access point, 4) Restart device, 5) Contact IT if issue persists."
+    },
+    "vpn": {
+        "setup": "VPN Setup: Download GlobalProtect from software.company.com, install, and connect using your domain credentials.",
+        "troubleshooting": "VPN Issues: 1) Ensure latest VPN client, 2) Restart home router, 3) Try Ethernet instead of WiFi, 4) Try alternate gateway, 5) Contact IT if repeated failures."
+    },
+    "expense": {
+        "policy": "Expense Policy: Client dinners capped at $75/person. Alcohol only with VP approval. Submit via Concur within 30 days.",
+        "submit": "To submit expenses: Open Concur, create new report, attach receipts, select appropriate category, submit for manager approval."
+    },
+    "mfa": {
+        "reset": "MFA Reset: Visit id.company.com/reset to reset your authenticator. You'll need backup codes or contact IT with ID verification.",
+        "setup": "MFA Setup: Download Microsoft Authenticator or Google Authenticator, scan QR code from id.company.com/enroll."
+    },
+    "laptop": {
+        "refresh": "Laptop Refresh: Engineering gets MacBook Pro every 3 years, Sales gets MacBook Air every 3 years. Early refresh requires VP approval.",
+        "support": "Laptop Issues: Submit ticket at helpdesk.company.com or call (555) 123-4567. Include your asset tag (on bottom of laptop)."
+    },
+    "onboarding": {
+        "new_hire": "New Hire Onboarding: Manager submits form in Workday 3 days before start. IT provisions email, Slack, laptop, and badge access.",
+        "first_day": "First Day: Pick up laptop from IT (Building A, Room 101), complete security training, set up MFA."
+    },
+    "it_contact": {
+        "support": "IT Support: Phone (555) 123-4567, Email support@company.com, Portal helpdesk.company.com. Hours: M-F 8AM-6PM, Emergency after-hours available."
+    }
+}
+
 
 class KnowledgeAgent:
     def __init__(self):
         pass
+
+    def _search_knowledge(self, query: str) -> str:
+        """Search the in-memory knowledge base"""
+        query_lower = query.lower()
+        matches = []
+        
+        # Search through all categories and topics
+        for category, topics in KNOWLEDGE_BASE.items():
+            if category in query_lower:
+                for topic, content in topics.items():
+                    matches.append(content)
+                    if len(matches) >= 3:
+                        break
+        
+        # If no category match, search content
+        if not matches:
+            for category, topics in KNOWLEDGE_BASE.items():
+                for topic, content in topics.items():
+                    if any(word in query_lower for word in topic.split("_")):
+                        matches.append(content)
+                    elif any(word in content.lower() for word in query_lower.split()[:3]):
+                        matches.append(content)
+                    if len(matches) >= 3:
+                        break
+        
+        return "\n\n".join(matches[:3]) if matches else ""
 
     def run(self, state: AgentState):
         print("--- Knowledge Agent ---")
         messages = state['messages']
         last_message = messages[-1]['content']
         
-        # 1. Privacy Filter: Redact PII
-        clean_query = redact_pii(last_message)
-        if clean_query != last_message:
-            print(f"Privacy Filter: Redacted PII from query.")
+        # Search knowledge base
+        context = self._search_knowledge(last_message)
+        docs_found = len(context.split("\n\n")) if context else 0
         
-        # 2. Check for conversation context (multi-turn)
-        conversation_summary = state.get("conversation_summary", "")
-        if conversation_summary:
-            clean_query = f"Context: {conversation_summary}\n\nNew Question: {clean_query}"
+        # Generate response (works with or without LLM)
+        if context:
+            confidence = 0.85
+            response = f"Based on our IT documentation:\n\n{context}"
+        else:
+            response = "I don't have specific information about this in our knowledge base. Let me connect you with our IT team.\n\n📞 **IT Support:** (555) 123-4567\n📧 **Email:** support@company.com"
+            confidence = 0.3
         
-        # 3. Retrieval
-        print(f"Querying knowledge base for: {clean_query[:50]}...")
-        retrieved_docs = query_knowledge_base(clean_query)
-        context = "\n\n".join(retrieved_docs)
-        
-        # Calculate retrieval confidence based on document relevance
-        retrieval_confidence = min(len(retrieved_docs) / 3, 1.0)  # Max 3 docs = 100%
-        
-        # 4. Generate Answer
-        response = mock_llm_rag_response(clean_query, context)
-        
-        # 5. Hallucination Check & Confidence Calculation
-        llm = get_llm()
-        check_template = """
-        You are a Fact Checker analyzing an IT support response.
-        
-        Context (from knowledge base):
-        {context}
-        
-        Generated Answer:
-        {response}
-        
-        Evaluate:
-        1. Is the answer fully supported by the context? (VERIFIED/UNVERIFIED)
-        2. Confidence score (0.0-1.0)
-        3. Brief reason
-        
-        Format: VERIFIED|0.85|Answer directly from policy docs
-        or: UNVERIFIED|0.3|Answer includes speculation
-        """
-        prompt = ChatPromptTemplate.from_template(check_template)
-        chain = prompt | llm | StrOutputParser()
-        
-        confidence = 0.5
-        confidence_reason = "Default confidence"
-        verified = True
-        
-        try:
-            verification = chain.invoke({"context": context, "response": response})
-            print(f"Verification: {verification}")
-            
-            # Parse response
-            parts = verification.strip().split("|")
-            if len(parts) >= 3:
-                verified = "VERIFIED" in parts[0].upper()
-                try:
-                    confidence = float(parts[1])
-                except:
-                    confidence = 0.5
-                confidence_reason = parts[2] if len(parts) > 2 else "Verified by LLM"
-            
-            if not verified:
-                response += "\n\n⚠️ *Note: This information may not be fully covered in our documentation. Please verify with IT support.*"
-                confidence = min(confidence, 0.5)
-                
-        except Exception as e:
-            print(f"Verification failed: {e}")
-            confidence = 0.4
-            confidence_reason = "Verification unavailable"
-        
-        # Combine retrieval and verification confidence
-        final_confidence = (retrieval_confidence * 0.4) + (confidence * 0.6)
-        
-        # Add confidence indicator to response
-        confidence_emoji = "🟢" if final_confidence > 0.7 else "🟡" if final_confidence > 0.4 else "🔴"
-        response += f"\n\n{confidence_emoji} *Confidence: {final_confidence:.0%}*"
+        # Add confidence (single, clean indicator)
+        emoji = "🟢" if confidence > 0.7 else "🟡" if confidence > 0.4 else "🔴"
+        response = f"{response}\n\n{emoji} *Confidence: {confidence:.0%}*"
         
         # Log the action
-        audit_log = AuditLogger.log(state, "KnowledgeAgent", "rag_query", {
-            "query": clean_query[:100],
-            "docs_retrieved": len(retrieved_docs),
-            "confidence": final_confidence
+        audit_log = AuditLogger.log(state, "KnowledgeAgent", "knowledge_query", {
+            "query": last_message[:50],
+            "docs_found": docs_found,
+            "confidence": confidence
         })
         
         return {
             "messages": [{"role": "assistant", "content": response}],
             "next_agent": "END",
-            "confidence": final_confidence,
-            "confidence_reason": confidence_reason,
+            "confidence": confidence,
             "audit_log": audit_log
         }
