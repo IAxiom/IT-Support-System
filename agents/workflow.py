@@ -5,7 +5,6 @@ from tools.mcp_tools import (
     check_hardware_eligibility, order_peripheral, reboot_server, submit_facility_request
 )
 from utils.llm import select_tool
-import json
 
 class WorkflowAgent:
     def __init__(self):
