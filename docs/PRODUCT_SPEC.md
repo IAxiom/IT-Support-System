@@ -67,12 +67,13 @@ An AI-powered multi-agent system that:
 - [x] Sentiment-aware escalation
 - [x] Security threat detection
 
-### Phase 2 (Current)
+### Phase 2 (Current) ✅
 - [x] MCP integration for standardized tools
 - [x] Metrics dashboard
 - [x] Visual agent graph
-- [ ] Multi-turn conversations
-- [ ] Feedback loop training
+- [x] Multi-turn conversations (conversation summary)
+- [x] Human-in-the-loop approvals
+- [ ] Feedback loop training (future)
 
 ### Phase 3 (Future)
 - [ ] Voice interface

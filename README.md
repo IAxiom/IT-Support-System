@@ -47,7 +47,7 @@ IT Support Genius is a **multi-agent AI system** that automates IT support opera
 | Agent | Purpose | Key Features |
 |-------|---------|--------------|
 | **Intake** | Request classification | Sentiment, VIP detection, urgency |
-| **Knowledge** | Information retrieval | 35-doc knowledge base |
+| **Knowledge** | Information retrieval | 8-category inline knowledge base |
 | **Workflow** | Automation execution | 11 tools, human approval |
 | **Escalation** | Human handoff | Real Jira tickets, Slack simulation |
 | **Log Analysis** | Security detection | 4 threat patterns |
