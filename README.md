@@ -81,7 +81,6 @@ IT Support Genius is a **multi-agent AI system** that automates IT support opera
 | [COMPETITIVE_ANALYSIS.md](docs/COMPETITIVE_ANALYSIS.md) | vs Glean, ServiceNow, Moveworks |
 | [UX_DESIGN.md](docs/UX_DESIGN.md) | Wireframes, user flows, design decisions |
 | [TESTING.md](docs/TESTING.md) | 31 test cases, 100% passing |
-| [DEMO_PRESENTATION.md](docs/DEMO_PRESENTATION.md) | Slides outline + demo script |
 
 ---
 
